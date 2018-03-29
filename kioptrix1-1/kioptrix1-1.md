@@ -20,5 +20,15 @@ We can see that the target has several ports open, and we'll run down the list t
 
 ## Gaining Access
 
-Using the `searchsploit` command, we can look for exploits that the target could be vulnerable to.
+Using the `searchsploit` command, we can look for exploits that the target could be vulnerable to. Running `searchsploit openssh` shows us all of the exploits available for OpenSSH from [exploit-db](https://www.exploit-db.com/ "exploit-db"), but unfortunately, none of them are of interest to us. We're looking for something that can give us remote code execution, and the only one found that does that is for OpenSSH 3.5p1, while the version on the target is more recent than that.
+
+Next, since http is running on port 80, we can try to navigate to the IP address in a web browser and see what we can find. Loading up `http://10.0.2.4` in Firefox gives us a login screen for remote system administration. This seems like a promising attack vector.
+
+![](images/login.png "http://10.0.2.4 loaded in Firefox")
+
+Since MySQL is also running on the target machine, it's likely that this login form is using SQL, and we can check to see if it's vulnerable to an SQL injection. A simple login SQL query would be something like `SELECT id FROM Users WHERE Username = 'InputUsername' AND Password = 'InputPassword'`, so we can manipulate the username and password parameters to get a valid SQL statement that will let us log in. If we use `' OR ''='` for both the username and the password, then the SQL query becomes `SELECT id FROM Users WHERE Username = '' OR ''='' AND Password = '' OR ''=''`, which checks to see if there exists a username and password combo that are empty strings, or if '' is the same as '', which it is. This means that the SQL statement is valid, and it will log us in as the first user in the user table, and we now have access to the administrative console.
+
+![](images/console.png "Using ' OR ''=' for both the username and password logs us in to the admin console")
+
+
 
