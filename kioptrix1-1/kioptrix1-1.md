@@ -22,6 +22,8 @@ We can see that the target has several ports open, and we'll run down the list t
 
 Using the `searchsploit` command, we can look for exploits that the target could be vulnerable to. Running `searchsploit openssh` shows us all of the exploits available for OpenSSH from [exploit-db](https://www.exploit-db.com/ "exploit-db"), but unfortunately, none of them are of interest to us. We're looking for something that can give us remote code execution, and the only one found that does that is for OpenSSH 3.5p1, while the version on the target is more recent than that.
 
+![](images/openssh.png "searchsploit openssh shows us the available exploits for OpenSSH")
+
 Next, since http is running on port 80, we can try to navigate to the IP address in a web browser and see what we can find. Loading up `http://10.0.2.4` in Firefox gives us a login screen for remote system administration. This seems like a promising attack vector.
 
 ![](images/login.png "http://10.0.2.4 loaded in Firefox")
