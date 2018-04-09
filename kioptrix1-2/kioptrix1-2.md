@@ -36,6 +36,8 @@ Because we didn't have any luck with port 22, we'll move on to considering the n
 
 Going to the "Blog" section shows two blog entries, one of which caught my eye. The "New Lead Programmer" entry gives us the username for their new lead programmer, "loneferret", which is something that we can leverage to gain access to their systems.
 
+![](images/blog.png "Blog entries for Ligoat")
+
 We can use THC-Hydra to try a dictionary attack on the "loneferret" user through SSH. To properly use a dictionary attack, we need a file with possible passwords that Hydra can try to log in with. I used [this file]("https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/darkweb2017-top10000.txt" "wordlist I used with THC-Hydra"), which includes 10,000 common passwords. Running the command `hydra -t 4 -l loneferret -P /usr/share/wordlists/top-10000.txt 10.0.2.7 ssh` will start Hydra with four tasks, meaning that there will be a maximum of 4 tries going on at once, using the login "loneferret" and wordlist that I downloaded, targeting the IP address `10.0.2.7` through the SSH service. As Hydra needs to try many passwords, it's typical that it will take a while to run.
 
 ![](images/hydra.png "result of THC-Hydra's dictionary attack")
