@@ -42,8 +42,6 @@ We can use THC-Hydra to try a dictionary attack on the "loneferret" user's SSH p
 
 Once Hydra finds a valid password, it will stop running and print out the result. In this case, it looks like the password for the "loneferret" user is "starwars". Now we can log in to the victim through the command `ssh loneferret@10.0.2.7` and entering the password when prompted.
 
-![](images/login.png "logging in to the loneferret account")
-
 ### Alternative Method
 
 I also discovered a second, more technical, method to get the password for the loneferret account. Using a tool called `OWASP ZAP`, we can scan the web application at http://10.0.2.7 for any vulnerabilities.
@@ -96,8 +94,9 @@ Then, we use John to compare the hashes against a wordlist with the command `joh
 
 Now that we have the passwords for the loneferret and dreg usernames, we can sign in to them with the SSH method listed above.
 
-
 ## Elevating Access
+
+![](images/login.png "logging in to the loneferret account")
 
 Once we're logged in, we can use the `ls` command to list all the contents of the current directory. We see that there's a file called "CompanyPolicy.README", which we can read with `cat CompanyPolicy.README`. In it, we find out that the "loneferret" account has access to the "sudo ht" command. If they're able to use `sudo` on this command, let's see if they can use it on any other one. Trying to execute `sudo su root` or `sudo /bin/bash` ends up with an error that the user is not allowed to execute the given command as root, showing that they can only execute `ht` as root.
 
