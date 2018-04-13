@@ -4,7 +4,7 @@ This vulnerable virtual machine was obtained from [VulnHub](https://www.vulnhub.
 
 ## Information gathering
 
-After booting up the attacker and vulnerable virtual machines, we can use the `ifconfig` and `netdiscover` commands to find the IP address of both of them. Running `ifconfig` will get us the IP address of the attacker machine, and from that, we can scan the local subnet with `nmap -sn 10.0.2.0/24` to find the IP address of the vulnerable machine. We scan the local subnet because we know that VirtualBox assigns IPs in that subnet, but the command can be changed to be `/12` or something else depending on the range you wish to scan. The arguments to the `nmap` command specify that an host discovery scan that skips the port scan phase should be used, and that the range to scan should be the IP addresses included in the `10.0.2.0/24` subnet, which are `10.0.2.1 - 10.0.2.254`.
+After booting up the attacker and vulnerable virtual machines, we can use the `ifconfig` and `nmap` commands to find the IP address of both of them. Running `ifconfig` will get us the IP address of the attacker machine, and from that, we can scan the local subnet with `nmap -sn 10.0.2.0/24` to find the IP address of the vulnerable machine. We scan the local subnet because we know that VirtualBox assigns IPs in that subnet, but the command can be changed to be `/12` or something else depending on the range you wish to scan. The arguments to the `nmap` command specify that an host discovery scan that skips the port scan phase should be used, and that the range to scan should be the IP addresses included in the `10.0.2.0/24` subnet, which are `10.0.2.1 - 10.0.2.254`.
 
 ![](images/ifconfig.png "ifconfig shows us that our attacker's IP address is 10.0.2.5")
 
