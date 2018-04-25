@@ -110,8 +110,46 @@ Now we can use this to get local access to the victim, by starting a listener on
 
 ## Escalating priviliges
 
-I also found a few ways of escalating from local to root privileges on this virtual machine, so I will describe the different ways I used.
+Now that we've gained local access to the machine with either of the two methods above, we need to get root access. I found a few ways of escalating from local to root privileges on this virtual machine, so I will describe the different ways I used. Both of these methods will work for either of the two local access methods.
 
 ### Method 1: command history
 
+Looking through the contents of LHayslett's home directory with `ls -al`, I noticed that the .bash\_history file was world-readable. Extrapolating this information, it's possible that the .bash\_history files for all users might be readable to everyone. Running the command `cat /home/*/.bash_history` will list the contents of this file for all of the users with their history file open for reading.
+
+![](images/history.png "Contents of most .bash_history files")
+
+We can see that two users, JKanode and peter, have used the `sshpass` command to run ssh using the "keyboard-interactive" password authentication but in non-interactive mode. Because they used the `-p` parameter, they entered their password in plaintext and we now have credentials for two more users.
+
+Looking at the /etc/group file, we can see that the peter user is in the adm and sudo groups, meaning that they have administrative access to the victim machine.
+
+![](images/group.png "Contents of the /etc/group file")
+
+Because we now have the password to the peter account, we can use SSH to log in as this account with the command `ssh peter@10.0.2.9` and entering is password when prompted. After logging in, we can run `sudo su root` and we now have root access!
+
+![](images/root2.png "Getting root through the peter account")
+
 ### Method 2: vulnerable cronjob
+
+After doing some poking around trying to gather information about how we can get root access, I found that there are several cron jobs running as the root user. This found by running the command `cat /etc/cron*`.
+
+![](images/crontab.png "Cron jobs running as root")
+
+These cron jobs are running out of the /etc directory, and if we run the command `ls -alh cron*` while in that directory, we can see the contents of all directories with names starting with "cron". Interestingly, the cron.d and cron.daily files both run the logrotate job, and if we read the file /etc/cron.d/logrotate, we can see that it is a crontab that executes the file /usr/local/sbin/cron-logrotate.sh as the root user.
+
+![](images/crond.png "The script being executed by the crontab")
+
+Checking out the file with `ls -l /usr/local/sbin/cron-logrotate.sh`, we see that it is able to be written to by all users.
+
+![](images/logrotate.png "Permissions on the cron-logrotate.sh file")
+
+Reading the file shows that it doesn't actually do anything and just has a comment in it, but we can change that by adding our own command for it to run.
+
+![](images/cron-logrotate.png "Contents of the cron-logrotate.sh file")
+
+If we run the command `echo "cp /bin/dash /tmp/pwn; chmod u+s /tmp/pwn; chmod root:root /tmp/pwn" >> /usr/local/sbin/cron-logrotate.sh`, it will append a command to the cron-logrotate script that will copy the binary for the dash shell into the file /tmp/pwn, make it so that the user who runs the shell will run with an effective user ID of the owner of the file, and sets the ownership to the root user. Essentially, when a user executes the /tmp/pwn file, they will get a dash shell running as root.
+
+![](images/echo.png "Echoing the command")
+
+After waiting around five minutes for the cron job to run, we can see that our file was created in the /tmp directory, so then we can run it with `/tmp/pwn -p`. The -p flag is used so that our effective uid isn't reset because it doesn't match our uid. After running this, we are now effectively root!
+
+![](images/root1.png "Running /tmp/pwn")
