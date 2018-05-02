@@ -26,7 +26,7 @@ In this case, we're interested in the usernames, as with the usernames, we can c
 
 ![](images/users.png "All users on the victim machine")
 
-## Gaining access
+## Gaining Access
 
 Throughout the time I poked around this virtual machine, I found several ways to gain access to it, and I will list them in their own sections.
 
@@ -108,7 +108,7 @@ Now we can use this to get local access to the victim, by starting a listener on
 
 ![](images/local.png "Getting local machine access with our webshell")
 
-## Escalating priviliges
+## Escalating Priviliges
 
 Now that we've gained local access to the machine with either of the two methods above, we need to get root access. I found a few ways of escalating from local to root privileges on this virtual machine, so I will describe the different ways I used. Both of these methods will work for either of the two local access methods.
 
