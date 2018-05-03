@@ -84,7 +84,7 @@ After uploading the file, the website attempts to display the GIF, but because i
 
 Looking back at the index.php contents, I noticed that there was an interesting line at the top. If the "lang" cookie was set when index.php was accessed, then the site would include and evaluate the file specified at lang/\<cookie value\>. Because the cookie value can be controlled by us, we can get our shell to run if we include its location in the cookie value. We can see where our reverse shell was saved on the web server by going to the URL `http://10.0.2.11/upload/`, which will give us the filename of the shell, which is just the MD5 hash of the original filename.
 
-![](images/upload.png "Filename of the reverse shell")
+![](images/uploaded.png "Filename of the reverse shell")
 
 So from the lang directory, our shell can be found at ../upload/b1a99ebaad4dd28f57517de36e770484.gif, and this will be our cookie content. Using Burp Suite, I captured a request to `http://10.0.2.11`, and we can modify this request to contain our cookie. A guide to setting up Burp Suite can be found [here](https://portswigger.net/burp/help/suite_gettingstarted "Burp Suite setup guide").
 
@@ -92,6 +92,36 @@ So from the lang directory, our shell can be found at ../upload/b1a99ebaad4dd28f
 
 We can then right-click on this request and send it to the repeater, and if we check its params, we can add our cookie through the "Add" button. After adding the lang cookie and its content, we can click the "Go" button to issue the request, which will evaluate our reverse shell and connect back to our listener, giving us access to the victim.
 
+![](images/cookie.png "Modifying the cookies in the request")
+
 ![](images/nc.png "Connecting with our listener")
 
 ## Escalating Privileges
+
+Now that we have access, we will try to escalate to root access. Given that we have usernames and passwords for the database, I decided to check to see if the users on the system had the same passwords. We can do so by using the command `su <username>` and entering the password when prompted. I needed to run the command `python -c 'import pty; pty.spawn("/bin/bash")'` to get The kent user did reuse the password, but their home directory was empty and they were unable to sudo, so I skipped them.
+
+![](images/kent.png "Logging in as kent")
+
+The mike user did not have the same password, so we can't use them. The kane user did reuse the password, and their home directory had an interesting file in it, msgmike.
+
+![](images/ls.png "Logging in as kane")
+
+The results of the `file msgmike` command shows that it is a setuid, setguid executable, and running `strings msgmike` shows that it runs the command `cat /home/mike/msg.txt`.
+
+![](images/strings.png "Strings in the msgmike file")
+
+Notably, the `cat` command doesn't use the full path of `/bin/cat`, so if we add our own `cat` program and modify the path so that our version is seen first, we will be able to run an arbitrary command as the mike user. If we run `echo "/bin/bash" > cat` and then `chmod +x cat`, it will create an executable file that will run `/bin/bash` when called. Then, we change the path by the command `export PATH=.:$PATH`, which will append the current directory to the front of the path variable, making it so that our version of `cat` will be executed before `/bin/cat` can be. Running the msgmike file with `./msgmike` will then give us a shell as the mike user.
+
+![](images/cat.png "Obtaining a shell as the mike user")
+
+The mike user's home directory also contains an interesting file, msg2root. When run, the command takes in an input, and from using `strings msg2root`, it echoes the input to /root/messages.txt. This file is also a setuid, setgid file and in this case, it runs with the permissions of the root user.
+
+![](images/mike.png "The msg2root command")
+
+However, this implementation is vulnerable to command injection. If we use a semicolon and a valid command as input, such as `; whoami`, the command will then be executed as the root user. This means that if the input is `; /bin/sh`, then running the command will give us a shell as root. Interestingly, this only works with /bin/sh and not /bin/bash.
+
+![](images/root.png "Gaining a root shell")
+
+We can then read the flag with `cat /root/messages.txt`, and we've beaten this virtual machine!
+
+![](images/flag.png "Reading the flag")
