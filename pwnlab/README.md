@@ -98,7 +98,7 @@ We can then right-click on this request and send it to the repeater, and if we c
 
 ## Escalating Privileges
 
-Now that we have access, we will try to escalate to root access. Given that we have usernames and passwords for the database, I decided to check to see if the users on the system had the same passwords. We can do so by using the command `su <username>` and entering the password when prompted. I needed to run the command `python -c 'import pty; pty.spawn("/bin/bash")'` to get The kent user did reuse the password, but their home directory was empty and they were unable to sudo, so I skipped them.
+Now that we have access, we will try to escalate to root access. Given that we have usernames and passwords for the database, I decided to check to see if the users on the system had the same passwords. We can do so by using the command `su <username>` and entering the password when prompted. I needed to run the command `python -c 'import pty; pty.spawn("/bin/bash")'` to get a proper shell environment first. The kent user did reuse the password, but their home directory was empty and they were unable to sudo, so I skipped them.
 
 ![](images/kent.png "Logging in as kent")
 
