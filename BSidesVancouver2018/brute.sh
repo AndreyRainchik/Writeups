@@ -12,9 +12,9 @@ while read p; do
 		echo "Password for $username found in $tries tries: $p"
 		break
 	fi
-	tries=$((tries+1))
 	printf "\r\033[K"
 	if [ "$count" -eq "$tries" ]; then
 		echo "No password found"
 	fi
+	tries=$((tries+1))
 done <$wordlist
