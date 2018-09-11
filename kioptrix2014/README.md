@@ -12,11 +12,11 @@ From these found IP addresses, we can narrow down our victim's IP address by see
 
 ## Scanning
 
-Running the command `nmap -A 192.168.56.104` will run tell us the services and their versions on all ports on the victim.
+Running the command `nmap -A 192.168.56.104` will tell us the services running and their versions on all ports on the victim.
 
 ![](images/nmap.png "nmap -A 192.168.56.104 will scan across all ports")
 
-As we can see that there is an http service running on port 80, we can get more information about it with the `nikto` utility. Running `nikto -h 192.168.56.104` will pull information about the web service on port 80, and we can see that there is a possible vulnerability that we can exploit.
+As we can see that there is an http service running on port 80 and 8080, we can get more information about it with the `nikto` utility. Running `nikto -h 192.168.56.104` will pull information about the web service on port 80, and we can see that there is a possible vulnerability that we can exploit.
 
 ![](images/nikto1.png "Getting information about the web server with nikto")
 
