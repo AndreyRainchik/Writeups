@@ -12,7 +12,7 @@ From these found IP addresses, we can narrow down our victim's IP address by see
 
 ## Scanning
 
-Running the command `nmap -sV 10.0.2.12 -p-` will run tell us the services and their versions on all ports on the victim.
+Running the command `nmap -sV 10.0.2.12 -p-` will tell us the services running and their versions on all ports on the victim.
 
 ![](images/nmap.png "nmap -sV 10.0.2.12 -p- will scan across all ports")
 
