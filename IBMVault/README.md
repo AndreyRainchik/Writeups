@@ -28,3 +28,9 @@ X-6.4183974
 ```
 
 Plugging these pairs into a [map](https://www.gps-coordinates.net/ "Link to a map utility"), with the first number of each pair corresponding to the latitude and the second as the longitude revealed that these were the coordinates of several IBM research centers in Almaden, Austin, Cambridge, Rio de Janeiro, Tokyo, and Dublin. On a whim, I input these cities as the key, and it worked! The key to lock 1 is `Almaden, Austin, Cambridge, Rio de Janeiro, Tokyo, Dublin`. At the completion of this lock, I was number 30 out of 3093 people on the leaderboard.
+
+## Lock 2
+
+The clue we're given to this lock is `fonchzopgemkevclewonvnbwtet`, and additionally we're told that this string contains hidden instructions and that the solution to the previous lock will help us. My guess was that this hint was encrypted in some manner, and the decryption key will be found in the answer to the previous lock. I tried several different encryption algorithms, such as the shift cipher and one-time pads, but I struck gold on the Vigenère cipher. When I used a decription key of AACRTD, or the first letter of each of the cities, the string we were given decrypted to `followopenthevaultontwitter`. The site that I used for my decryption can be found [here](https://www.dcode.fr/vigenere-cipher "The decryption site I used").
+
+Going over to Twitter, I found the user @open\_the\_vault, who has a single tweet that says "You've found me. You need to follow this user, and mention it using the game hashtag to receive the password for Lock 2 via DM." After following this user, I tweeted at them with \#IBMvault, and I received a DM that said "Good job. The password to open this lock is: nuwanda". After inputting `nuwanda` as the key, I successfully completed this lock! At the time of my completion, I was number 14 out of the 288 people who solved lock 1.
