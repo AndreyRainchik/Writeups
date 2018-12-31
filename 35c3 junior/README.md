@@ -4,8 +4,6 @@ This was a CTF held on December 27-29 2018 by the Chaos Computer Club, and was t
 
 The challenges and their sources can be found [here](https://junior.35c3ctf.ccc.ac/challenges/ "link to the ctf"), and hopefully everything is still there. The IP addresses and ports for the challenges have changed since the CTF ended, so I'll update any scripts I provide to work for the new information.
 
-## Wee, Paperbots!
-
 Many of the challenges in this CTF revolved around a custom web application called [Paperbots](http://35.207.132.47 "The web application") which uses the Wee programming language to allow a user to "write different types of programs, from instructions for a robot, to games and interactive art". The source code for the web application was found at [/pyserver/server.py](./files/wee_server.py "Source code for the web application"). If a particular flag involved this site, I will mention it in the writeup.
 
 ## Pwn
@@ -65,9 +63,9 @@ Running this script gives us a flag of `35C3_f08b903f48608a14cbfbf73c08d7bdd731a
 
 ### Flags
 
-This challenge works off of a [web server](http://35.207.132.47:84/ "The webserver") with a [script](./files/flags.php "The script served by the webserver") that will display a flag depending on the supplied HTTP\_ACCEPT\_LANGUAGE header given by an HTTP request. The description states that the flag is located at /flag, so with the vulnerable code `$c = file_get_contents("flags/$lang");`, we can have an HTTP\_ACCEPT\_LANGUAGE header of ../../../../../../../../flag and we'll receive our flag.
+This challenge works off of a [web server](http://35.207.132.47:84/ "The webserver") with a [script](./files/flags.php "The script served by the webserver") that will display a flag depending on the supplied `HTTP_ACCEPT_LANGUAGE` header given by an HTTP request. The description states that the flag is located at `/flag`, so with the vulnerable code `$c = file_get_contents("flags/$lang");`, we can have an `HTTP_ACCEPT_LANGUAGE` header of `../../../../../../../../flag` and we'll receive our flag.
 
-However, some filtering is in place to prevent this with the line `$lang = str_replace('../', '', $lang);`, which removes every instance of ../ in the header. But if the filter is applied on the string ....//, it will remove the instance of ../ and give us a result of ../, which we wanted in the first place. So now if our header is ....//....//....//....//....//....//....//....//flag, we'll get past the filter and receive our flag encoded in Base64.
+However, some filtering is in place to prevent this with the line `$lang = str_replace('../', '', $lang);`, which removes every instance of ../ in the header. But if the filter is applied on the string `....//`, it will remove the instance of `../` and give us a result of `../`, which we wanted in the first place. So now if our header is `....//....//....//....//....//....//....//....//flag`, we'll get past the filter and receive our flag encoded in Base64.
 
 With a quick little [Python script](./files/flags.py "Python script to get the flag"), we can request for and decode our flag of `35c3_this_flag_is_the_be5t_fl4g`
 
@@ -75,6 +73,14 @@ With a quick little [Python script](./files/flags.py "Python script to get the f
 
 As one of the challenges involving the Paperbots application, finding this flag required a user to log in to the app. Unfortunately, registering for an account is supposed to email you with a verification code, but the functionality wasn't implemented in time. Luckily, several functions in the source code allow us to work around this.
 
-Making a POST request to the /api/signup endpoint with an email and username will add a user to the user database. Then, another POST request to /api/verify with the same email will query the database and return the verification code for the user. Passing this code to /api/login with a further POST request will then set a cookie called `logged_in`, which is our flag.
+Making a POST request to the `/api/signup` endpoint with an email and username will add a user to the user database. Then, another POST request to `/api/verify` with the same email will query the database and return the verification code for the user. Passing this code to `/api/login` with a further POST request will then set a cookie called `logged_in`, which is our flag.
 
 [This Python script](./files/loggedin.py "Python script to get the flag") will automatically perform these actions and print out the flag of `35C3_LOG_ME_IN_LIKE_ONE_OF_YOUR_FRENCH_GIRLS`.
+
+## McDonald
+
+The description for this web challenge was that `Our web admin name's "Mc Donald" and he likes apples and always forgets to throw away his apple cores..`. Going to the web server at `http://35.207.132.47:85` reveals a pretty empty web page that just displays the description. The source code didn't have anything interesting in it, so I checked out the `/robots.txt` file and found an entry of `Disallow: /backup/.DS_Store`. Going to that file downloads a [.DS_Store](./files/DS_Store "The .DS_Store file") file. This file is a special Mac file that contains the metadata for the containing folder, so if we can read it, we'll get information about the backup folder.
+
+Using the [ds_store](https://ds-store.readthedocs.io/en/latest/ "ds_store Python library") Python library, we can get a listing of the folders within `/backup`. We find that there are multiple folders named `/a`, `/b`, and `/c`, and if we go to them, we get an HTTP 403 Forbidden error, meaning that the folder exists but we can't access it. Trying different combinations such as `/a/b/c` continues to give 403 errors, but when you try to go four layers deep, such as `/a/b/c/a`, we end up with HTTP 404 Not Found errors, meaning that we have a maximum depth of 3 and thus 18 potential folders to go through.
+
+I put together a [Python script](./files/mcdonald.py "Python script to get the flag") that will go through each combination of folders until it finds a file called `flag.txt` and then prints out the contents. Running it reveals that the flag is inside `/backup/b/a/c` and is `35c3_Appl3s_H1dden_F1l3s`
