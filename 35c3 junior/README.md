@@ -56,4 +56,15 @@ TRY AGAIN!
 The scoring works out to be 1 * the ASCII value of the 65th byte + 256 * the ASCII value of the 66th byte + 65536 * the ASCII value of the 67th character. If we want this to equal 1000000, this turns out to be a simple math equation of 1000000 = x + 256y + 65536z. Solving this gives us x=64, y=66, and z=15. Since the ASCII value of 15 corresponds to an unprintable character, we'll use a [Python script](./files/poet.py "Python script to get the flag") to generate our poet name for us and get the flag while we're at it.
 
 Running this script gives us a flag of `35C3_f08b903f48608a14cbfbf73c08d7bdd731a87d39`
+
 ## Web
+
+### Flags
+
+This challenge works off of a [web server](./files/flags.php "The code for the webserver") that will display a flag depending on the supplied HTTP\_ACCEPT\_LANGUAGE header given by an HTTP request. The description states that the flag is located at /flag, so with the vulnerable code `$c = file_get_contents("flags/$lang");`, we can have an HTTP\_ACCEPT\_LANGUAGE header of ../../../../../../../../flag and we'll receive our flag.
+
+However, some filtering is in place to prevent this with the line `$lang = str_replace('../', '', $lang);`, which removes every instance of ../ in the header. But if the filter is applied on the string ....//, it will remove the instance of ../ and give us a result of ../, which we wanted in the first place. So now if our header is ....//....//....//....//....//....//....//....//flag, we'll get past the filter and receive our flag encoded in Base64.
+
+With a quick little [Python script](./files/flags.py "Python script to get the flag"), we can request for and decode our flag of `35c3_this_flag_is_the_be5t_fl4g`
+
+
