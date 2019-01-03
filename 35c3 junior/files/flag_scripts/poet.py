@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import socket
+import time
 
 def calc():
     chars = [i for i in range(1, 127)]
@@ -40,8 +41,9 @@ def connect(payload):
         s.sendall(str.encode(payload))
         s.sendall(b'\n')
         score = s.recv(2048).decode("ascii")
-        final = s.recv(2048).decode("ascii")
-        flag = final.split("FLAG:")[1].split('+')[0].strip()
+        score += s.recv(2048).decode("ascii")
+        #print(score)
+        flag = score.split("FLAG:")[1].split('+')[0].strip()
         print(flag)
     
 if __name__ == "__main__":
