@@ -169,3 +169,54 @@ The description for this web challenge was that `Our web admin name's "Mc Donald
 Using the [ds_store](https://ds-store.readthedocs.io/en/latest/ "ds_store Python library") Python library, we can get a listing of the folders within `/backup`. We find that there are multiple folders named `/a`, `/b`, and `/c`, and if we go to them, we get an HTTP 403 Forbidden error, meaning that the folder exists but we can't access it. Trying different combinations such as `/a/b/c` continues to give 403 errors, but when you try to go four layers deep, such as `/a/b/c/a`, we end up with HTTP 404 Not Found errors, meaning that we have a maximum depth of 3 and thus 18 potential folders to go through.
 
 I put together a [Python script](./files/flag_scripts/mcdonald.py "Python script to get the flag") that will go through each combination of folders until it finds a file called `flag.txt` and then prints out the contents. Running it reveals that the flag is inside `/backup/b/a/c` and is `35c3_Appl3s_H1dden_F1l3s`
+
+### Not(e) accessible
+
+This challenge provides us with a web server at [http://35.207.132.47:90/](http://35.207.132.47:90/ "The web server") that will store text we give it and allow us to view the text stored. We can get the source code for the frontend and backend at the [/src.tgz](http://35.207.132.47:90/src.tgz "Download the source code") file.
+
+Looking through this, we see in the [frontend/index.php](./files/ctf_files/note_index.php "index.php file") file that the ID we get for our note is randomly generated, and that the password for each note is just its MD5 hash.
+
+```php
+$id = random_int(PHP_INT_MIN, PHP_INT_MAX);
+$pw = md5($note);
+        
+# Save password so that we can check it later
+file_put_contents("./pws/$id.pw", $pw); 
+
+file_get_contents($BACKEND . "store/" . $id . "/" . $note);
+```
+
+That `file_get_contents()` call is interesting because to store the note in the backend, the frontend tries to read the contents of a different file. To see how it does so, let's look at the [backend](./files/ctf_files/note_backend.rb "Backend Ruby file")
+
+```ruby
+require 'sinatra'
+set :bind, '0.0.0.0'
+
+get '/get/:id' do
+	File.read("./notes/#{params['id']}.note")
+end
+
+get '/store/:id/:note' do 
+	File.write("./notes/#{params['id']}.note", params['note'])
+	puts "OK"
+end 
+
+get '/admin' do
+	File.read("flag.txt")
+end
+```
+
+So it looks like the backend is actually a seperate server that the frontend talks with. If the frontend sends an HTTP GET request to `/store`, the backend will store the note, and a GET request to `/get` will read the contents of the note. To get our flag, we'll need to get the frontend to send a GET request to `/admin` which will read the contents of `flag.txt`.
+
+The [frontend/view.php](./files/ctf_files/note_view.php "view.php file") is where we get our vulnerability.
+
+```php
+$id = $_GET['id'];
+if(file_exists("./pws/" . (int) $id . ".pw")) {
+    if(file_get_contents("./pws/" . (int) $id . ".pw") == $_GET['pw']) {
+        echo file_get_contents($BACKEND . "get/" . $id);
+```
+
+`view.php` will take the `id` parameter passed in and then check to see if it's a valid ID by casting it to an integer. However, when it callse the backend to read the note, the ID is not cast to an integer, meaning that we can manipulate the ID parameter as we need. In particular, if we take a valid ID, add `/../../admin` to it, the backend will get a request for `/admin`, as seeing `/get/id/../../admin` is equivalent to a request to `/admin` due to the directory traversal we performed with the `../`s.
+
+I put together a [Python script](./files/flag_scripts/note.py "Python script to get the flag") that will get a valid ID and then print out the flag of `35C3_M1Cr0_S3rvices_4R3_FUN!`
