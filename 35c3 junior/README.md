@@ -6,6 +6,124 @@ The challenges and their sources can be found [here](https://junior.35c3ctf.ccc.
 
 Many of the challenges in this CTF revolved around a custom web application called [Paperbots](http://35.207.132.47 "The web application") which uses the Wee programming language to allow a user to "write different types of programs, from instructions for a robot, to games and interactive art". The source code for the web application was found at [/pyserver/server.py](./files/ctf_files/wee_server.py "Source code for the web application"). If a particular flag involved this site, I will mention it in the writeup.
 
+## Misc
+
+### Conversion Error
+
+Many of the challenges in the Misc category are about trying to trigger assert statements in the weeterpreter found in the Paperbots application. We can run wee code by sending an HTTP POST request to /wee/run with the code in a `code` json parameter.
+
+```python
+@app.route("/wee/run", methods=["POST"])
+def weeservice():
+    json = request.get_json(force=True)
+    wee = json["code"]
+    out = runwee(wee)
+    return jsonify({"code": wee, "result": out})
+```
+
+This then runs the `runwee()` function.
+
+```python
+# Wee as a service.
+def runwee(wee: string) -> string:
+    print("{}: running {}".format(request.remote_addr, wee))
+    result = check_output(
+        ["ts-node", '--cacheDirectory', os.path.join(WEE_PATH, "__cache__"),
+         os.path.join(WEE_PATH, WEETERPRETER), wee], shell=False, stderr=STDOUT, timeout=WEE_TIMEOUT,
+        cwd=WEE_PATH).decode("utf-8")
+    print("{}: result: {}".format(request.remote_addr, result))
+    return result
+```
+
+We can see that this function makes an operating system call to run the weeterpreter, and we can find the locations of the `WEE_PATH` and `WEETERPRETER` in the Python server file.
+
+```python
+WEE_PATH = "../weelang"
+WEETERPRETER = "weeterpreter.ts"
+```
+
+Now if we go to [http://35.207.132.47/weelang/weeterpreter.ts](./files/ctf_files/weeterpreter.ts "weeterpreter code"), we can view the code and see how the weeterpreter runs.
+
+```javascript
+if (require.main === module) {
+    //eval_in_chrome("1+1")
+    const wee = process.argv[2];
+    //console.log(wee)
+    wee_exec(wee)
+        .then(_=>browserPromise)
+        .then(b=>b.close())
+        .then(_=>process.exit())
+}
+```
+
+Running the weeterpreter will call the `wee_exec()` function on the input code we provided.
+
+```javascript
+export async function wee_exec(code: string) {
+    try {
+        const compiled = compiler.compile(code, get_headless_externals())
+        const vm = new VirtualMachine(compiled.functions, compiled.externalFunctions)
+        while (vm.state != VirtualMachineState.Completed) {
+            vm.run(10000)
+            await DoEvents() // Excited about this name! VB6 <3. Nothing beats the good ol' "On Error Resume Next"...
+        }
+        vm.restart()
+    } catch (ex) {
+        console.error(ex.message)
+    }
+}
+```
+
+Looks like `wee_exec()` compiles our code and then runs it in a virtual machine. Looking at the `get_headless_externals()` that the compiler uses, we see the assert statements that we'll be triggering. For this flag in particular, we'll look at the `assert_conversion()` statements.
+
+```javascript
+ externals.addFunction(
+        "assert_conversion",
+        [{name: "str", type: compiler.StringType}], compiler.StringType,
+        false,
+        (str: string) => str.length === +str + "".length || !/^[1-9]+(\.[1-9]+)?$/.test(str)
+            ? "Convert to Pastafarianism" : flags.CONVERSION_ERROR
+    )
+```
+
+Focusing on that last line, we can see how we get our flag. The format of the assert statement boils down to `test ? true : false`, so if we get the test statement of `str.length === +str + "".length || !/^[1-9]+(\.[1-9]+)?$/.test(str)` to be false, we'll get our flag. As this is an OR statement, denoted by the `||`, both of `str.length === +str + "".length` and `!/^[1-9]+(\.[1-9]+)?$/.test(str)` need to be false for the whole thing to be false.
+
+Looking at the statement on the right, it looks to be a regex expression that we can evaluate. The exclamation mark in the front shows that we'll take the inverse of whatever the regex spits out, so we need to find a string that matches the regex in order to get a false value. The regex starts from the start of the string and looks for a single digit between 1 and 9, inclusive. Then it looks for a period and then another digit between 1 and 9, inclusive. So basically, if we have a number between 1 and 9 with a single decimal, we can match the regex and then get an overall value of false for this statement.
+
+Now we need to get the left part of the statement to be false. It takes the length of the string and checks to see if it's equal to the value of the string + 0. Going off of what we found in the regex, we can use a floating point number to test this. If we take the length of the string `1.1`, which is 3, we can clearly see that 3 does not equal 1.1 + 0, making this statement false.
+
+Now that both sides of the OR statement are false, the entire thing is false and we'll get our flag. However, we'll need to actually print out our flag because the assertion doesn't actually print anything. Looking at the weeterpreter code further, we see that there are `alert()` functions that we can use.
+
+```javascript
+externals.addFunction(
+        "alert",
+        [{name: "message", type: compiler.StringType}], compiler.NothingType,
+        false,
+        console.log
+    )
+```
+
+Calling this function will print out what it's given, so if we choose the wee code `alert(assert_conversion("1.1"))`, we can use that in our POST request to `/wee/run` and get our flag.
+
+[This Python script](./files/flag_scripts/conversion.py "Python script to get the flag") will run through this process and print out the flag of `35C3_FLOATING_POINT_PROBLEMS_I_FEEL_B4D_FOR_YOU_SON`
+
+### Wee R Leet
+
+As another challenge that involves the assert statements in the weeterpreter, we'll run through the same process as the others. The statement for this one is as follows.
+
+```javascript
+externals.addFunction(
+        "assert_leet",
+        [{name: "maybe_leet", type: compiler.NumberType}], compiler.StringType,
+        false,
+        (maybe_leet: number) => maybe_leet !== 0x1337 ? "WEE AIN'T LEET" : flags.WEE_R_LEET
+    )
+```
+
+To trigger this statement, we need to input a number that corresponds to hexadecimal value `0x1337`. A quick conversion shows that the decimal value for this is 4919, so if we use `alert(assert_leet(1337))` as the value for the `code` parameter in our POST statement to `/wee/run`, we'll get our flag.
+
+[This Python script](./files/flag_scripts/conversion.py "Python script to get the flag") will run through this process and print out the flag of `35C3_HELLO_WEE_LI77LE_WORLD`
+
 ## Pwn
 
 ### 1996
