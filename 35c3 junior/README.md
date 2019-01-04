@@ -121,9 +121,27 @@ externals.addFunction(
     )
 ```
 
-Seems like any number would equal itself, but what if we try something that's not a number? In JavaScript, NaN is a value that's Not-a-Number, like the square root of -1 or a division by 0. It also has the property that [NaN is not equal to itself](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/NaN#Testing_against_NaN "Documentation showing Nan != NaN"). This means that if we use `alert(assert_equals(0/0))` as the code parameter in a POST request to `/wee/run`, the assert will fail and give us the flag.
+Seems like any number would equal itself, but what if we try something that's not a number? In JavaScript, NaN is a value that's Not-a-Number, like the square root of -1 or a division by 0. It also has the property that [NaN is not equal to itself](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/NaN#Testing_against_NaN "Documentation showing Nan != NaN"). This means that if we use `alert(assert_equals(0/0))` as the `code` parameter in a POST request to `/wee/run`, the assert will fail and give us the flag.
 
 [This Python script](./files/flag_scripts/equality.py "Python script to get the flag") will run through this process and print out the flag of `35C3_NANNAN_NANNAN_NANNAN_NANNAN_BATM4N`
+
+### Number Error
+
+More assertion shenanigans happen in this challenge. Now, the `assert_number()` statement checks to see if the number that's passed in is valid.
+
+```javascript
+externals.addFunction(
+        "assert_number",
+        [{name: "num", type: compiler.NumberType}], compiler.StringType,
+        false,
+        (num: number) => !isFinite(num) || isNaN(num) || num !== num + 1
+            ? "NUMBERS WORK" : flags.NUMBER_ERROR
+    )
+```
+
+The check makes sure that the number is not infinity, is not NaN, and is not equal to the sum of the number plus 1. To trip up this check, we'll use a number that is equal to the itself plus 1. In JavaScript, the maximum safe integer is `9007199254740991`, as this is 2^(53)-1 and JavaScript stores numbers as floating-points with 52 bits allocated to the part after the decimal. This means that if we add 1 to a number greater than `9007199254740991`, it will be [treated as the same number](https://stackoverflow.com/a/4375743 "StackOverflow post explaining this"). So if we use `alert(assert_number(9007199254740992))` as the `code` parameter in a POST request to `/wee/run`, the assert will fail and give us the flag.
+
+[This Python script](./files/flag_scripts/number.py "Python script to get the flag") will run through this process and print out the flag of `35C3_THE_AMOUNT_OF_INPRECISE_EXCEL_SH33TS`
 
 ### Wee R Leet
 
@@ -140,7 +158,7 @@ externals.addFunction(
 
 To trigger this statement, we need to input a number that corresponds to hexadecimal value `0x1337`. A quick conversion shows that the decimal value for this is 4919, so if we use `alert(assert_leet(1337))` as the value for the `code` parameter in our POST request to `/wee/run`, we'll get our flag.
 
-[This Python script](./files/flag_scripts/conversion.py "Python script to get the flag") will run through this process and print out the flag of `35C3_HELLO_WEE_LI77LE_WORLD`
+[This Python script](./files/flag_scripts/leet.py "Python script to get the flag") will run through this process and print out the flag of `35C3_HELLO_WEE_LI77LE_WORLD`
 
 ## Pwn
 
