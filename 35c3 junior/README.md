@@ -77,13 +77,13 @@ export async function wee_exec(code: string) {
 Looks like `wee_exec()` compiles our code and then runs it in a virtual machine. Looking at the `get_headless_externals()` that the compiler uses, we see the assert statements that we'll be triggering. For this flag in particular, we'll look at the `assert_conversion()` statements.
 
 ```javascript
- externals.addFunction(
-        "assert_conversion",
-        [{name: "str", type: compiler.StringType}], compiler.StringType,
-        false,
-        (str: string) => str.length === +str + "".length || !/^[1-9]+(\.[1-9]+)?$/.test(str)
-            ? "Convert to Pastafarianism" : flags.CONVERSION_ERROR
-    )
+externals.addFunction(
+    "assert_conversion",
+    [{name: "str", type: compiler.StringType}], compiler.StringType,
+    false,
+    (str: string) => str.length === +str + "".length || !/^[1-9]+(\.[1-9]+)?$/.test(str)
+        ? "Convert to Pastafarianism" : flags.CONVERSION_ERROR
+)
 ```
 
 Focusing on that last line, we can see how we get our flag. The format of the assert statement boils down to `test ? true : false`, so if we get the test statement of `str.length === +str + "".length || !/^[1-9]+(\.[1-9]+)?$/.test(str)` to be false, we'll get our flag. As this is an OR statement, denoted by the `||`, both of `str.length === +str + "".length` and `!/^[1-9]+(\.[1-9]+)?$/.test(str)` need to be false for the whole thing to be false.
@@ -96,11 +96,11 @@ Now that both sides of the OR statement are false, the entire thing is false and
 
 ```javascript
 externals.addFunction(
-        "alert",
-        [{name: "message", type: compiler.StringType}], compiler.NothingType,
-        false,
-        console.log
-    )
+    "alert",
+    [{name: "message", type: compiler.StringType}], compiler.NothingType,
+    false,
+    console.log
+)
 ```
 
 Calling this function will print out what it's given, so if we choose the wee code `alert(assert_conversion("1.1"))`, we can use that in our POST request to `/wee/run` and get our flag.
@@ -113,12 +113,12 @@ An additional challenge focusing on assert statements, the `assert_equals()` che
 
 ```javascript
 externals.addFunction(
-        "assert_equals",
-        [{name: "num", type: compiler.NumberType}], compiler.StringType,
-        false,
-        (num: number) => num === num
-            ? "EQUALITY WORKS" : flags.EQUALITY_ERROR
-    )
+    "assert_equals",
+    [{name: "num", type: compiler.NumberType}], compiler.StringType,
+    false,
+    (num: number) => num === num
+        ? "EQUALITY WORKS" : flags.EQUALITY_ERROR
+)
 ```
 
 Seems like any number would equal itself, but what if we try something that's not a number? In JavaScript, NaN is a value that's Not-a-Number, like the square root of -1 or a division by 0. It also has the property that [NaN is not equal to itself](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/NaN#Testing_against_NaN "Documentation showing Nan != NaN"). This means that if we use `alert(assert_equals(0/0))` as the `code` parameter in a POST request to `/wee/run`, the assert will fail and give us the flag.
@@ -131,12 +131,12 @@ More assertion shenanigans happen in this challenge. Now, the `assert_number()` 
 
 ```javascript
 externals.addFunction(
-        "assert_number",
-        [{name: "num", type: compiler.NumberType}], compiler.StringType,
-        false,
-        (num: number) => !isFinite(num) || isNaN(num) || num !== num + 1
-            ? "NUMBERS WORK" : flags.NUMBER_ERROR
-    )
+    "assert_number",
+    [{name: "num", type: compiler.NumberType}], compiler.StringType,
+    false,
+    (num: number) => !isFinite(num) || isNaN(num) || num !== num + 1
+        ? "NUMBERS WORK" : flags.NUMBER_ERROR
+)
 ```
 
 The check makes sure that the number is not infinity, is not NaN, and is not equal to the sum of the number plus 1. To trip up this check, we'll use a number that is equal to the itself plus 1. In JavaScript, the maximum safe integer is `9007199254740991`, as this is 2^(53)-1 and JavaScript stores numbers as floating-points with 52 bits allocated to the part after the decimal. This means that if we add 1 to a number greater than `9007199254740991`, it will be [treated as the same number](https://stackoverflow.com/a/4375743 "StackOverflow post explaining this"). So if we use `alert(assert_number(9007199254740992))` as the `code` parameter in a POST request to `/wee/run`, the assert will fail and give us the flag.
@@ -149,16 +149,35 @@ As another challenge that involves the assert statements in the weeterpreter, we
 
 ```javascript
 externals.addFunction(
-        "assert_leet",
-        [{name: "maybe_leet", type: compiler.NumberType}], compiler.StringType,
-        false,
-        (maybe_leet: number) => maybe_leet !== 0x1337 ? "WEE AIN'T LEET" : flags.WEE_R_LEET
-    )
+    "assert_leet",
+    [{name: "maybe_leet", type: compiler.NumberType}], compiler.StringType,
+    false,
+    (maybe_leet: number) => maybe_leet !== 0x1337 ? "WEE AIN'T LEET" : flags.WEE_R_LEET
+)
 ```
 
 To trigger this statement, we need to input a number that corresponds to hexadecimal value `0x1337`. A quick conversion shows that the decimal value for this is 4919, so if we use `alert(assert_leet(1337))` as the value for the `code` parameter in our POST request to `/wee/run`, we'll get our flag.
 
 [This Python script](./files/flag_scripts/leet.py "Python script to get the flag") will run through this process and print out the flag of `35C3_HELLO_WEE_LI77LE_WORLD`
+
+### Wee Token
+
+The last of the assert challenges, this one focuses on the `assert_string()` statement, which checks to see if an input string is actually a string.
+
+```javascript
+externals.addFunction(
+    // Wee is statically typed. Finding a way to confuse the VM is impossible.
+    "assert_string",
+    [{name: "str", type: compiler.StringType}], compiler.StringType,
+    false,
+    (str: string) => typeof str == "string" ? "WEE is statically typed. Sorry, confusing the VM is impossible."
+        : flags.WEE_TOKEN
+)
+```
+
+One option we have is to use the `eval()` JavaScript function to our advantage. This function takes a string input that represents a JavaScript expression, and returns the completion value of evaluating the expression as a string. However, if it's given an empty string as input, it will return `undefined`, which has its own type. So now if we use `alert(assert_string(eval('')))` as the value for the `code` parameter in our POST request to `/wee/run`, we'll get our flag.
+
+[This Python script](./files/flag_scripts/weetoken.py "Python script to get the flag") will run through this process and print out the flag of `35C3_WEE_IS_TINY_AND_SO_CONFU5ED`
 
 ### ultra secret
 
