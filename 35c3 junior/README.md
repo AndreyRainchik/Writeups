@@ -107,6 +107,24 @@ Calling this function will print out what it's given, so if we choose the wee co
 
 [This Python script](./files/flag_scripts/conversion.py "Python script to get the flag") will run through this process and print out the flag of `35C3_FLOATING_POINT_PROBLEMS_I_FEEL_B4D_FOR_YOU_SON`
 
+### Equality Error
+
+An additional challenge focusing on assert statements, the `assert_equals()` check makes sure that a number is equal to itself.
+
+```javascript
+externals.addFunction(
+        "assert_equals",
+        [{name: "num", type: compiler.NumberType}], compiler.StringType,
+        false,
+        (num: number) => num === num
+            ? "EQUALITY WORKS" : flags.EQUALITY_ERROR
+    )
+```
+
+Seems like any number would equal itself, but what if we try something that's not a number? In JavaScript, NaN is a value that's Not-a-Number, like the square root of -1 or a division by 0. It also has the property that [NaN is not equal to itself](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/NaN#Testing_against_NaN "Documentation showing Nan != NaN"). This means that if we use `alert(assert_equals(0/0))` as the code parameter in a POST request to `/wee/run`, the assert will fail and give us the flag.
+
+[This Python script](./files/flag_scripts/equality.py "Python script to get the flag") will run through this process and print out the flag of `35C3_NANNAN_NANNAN_NANNAN_NANNAN_BATM4N`
+
 ### Wee R Leet
 
 As another challenge that involves the assert statements in the weeterpreter, we'll run through the same process as the others. The statement for this one is as follows.
@@ -120,7 +138,7 @@ externals.addFunction(
     )
 ```
 
-To trigger this statement, we need to input a number that corresponds to hexadecimal value `0x1337`. A quick conversion shows that the decimal value for this is 4919, so if we use `alert(assert_leet(1337))` as the value for the `code` parameter in our POST statement to `/wee/run`, we'll get our flag.
+To trigger this statement, we need to input a number that corresponds to hexadecimal value `0x1337`. A quick conversion shows that the decimal value for this is 4919, so if we use `alert(assert_leet(1337))` as the value for the `code` parameter in our POST request to `/wee/run`, we'll get our flag.
 
 [This Python script](./files/flag_scripts/conversion.py "Python script to get the flag") will run through this process and print out the flag of `35C3_HELLO_WEE_LI77LE_WORLD`
 
