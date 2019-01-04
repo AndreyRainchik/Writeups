@@ -1,7 +1,7 @@
 import requests
 
 host = "http://35.207.132.47/wee/run"
-code = "\"1\""
+code = "\"1.1\""
 
 check = {"code": "alert(assert_conversion("+code+"))"}
 flag_request = requests.post(host, json=check)
