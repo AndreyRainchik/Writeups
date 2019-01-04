@@ -160,6 +160,45 @@ To trigger this statement, we need to input a number that corresponds to hexadec
 
 [This Python script](./files/flag_scripts/leet.py "Python script to get the flag") will run through this process and print out the flag of `35C3_HELLO_WEE_LI77LE_WORLD`
 
+### ultra secret
+
+In this challenge, we have to connect to a server at 35.207.132.47 port 1337 and input the correct password to get the flag. We also get a hint that the password is limited to digits and lowercase letters. The source code for the authentication process is also provided for us, and can be found [here](./files/ctf_files/ultra_secret.rs "Source code for authentication process") Looking at it, we get a few important pieces of information. First, we can tell that the authentication process only looks at the first 32 characters of the password.
+
+```rust
+let password = &password[0..32];
+```
+
+Then, it calls a `hash()` function on the first character of the given password, and if it matches the `hash()` result of the first character of the actual password, it'll move on and do the same for the second character and so on.
+
+```rust
+for c in password.chars() {
+    let hash =  hash(c);
+    if hash != hashes[i] {
+        exit(1);
+    }
+    i += 1;
+}
+```
+
+The `hash()` function isn't one that's provided by the Rust language used, instead there's a specially defined function that when given a character will then do 1000 rounds of SHA-256 hashing on the character.
+
+```rust
+fn hash(c: char) -> String {
+    let mut hash = String::new();
+    hash.push(c);
+    for _ in 0..9999 {
+        let mut sha = Sha256::new();
+        sha.input_str(&hash);
+        hash = sha.result_str();
+    }
+    hash
+}
+```
+
+1000 rounds of hashing per character would take a noticeable amount of time for each character, so we can try a timing attack on the password. Essentially, we'll take a possible first character and submit it to see how long it takes to be rejected. Then, we'll try it again for the rest of the possible first characters, working through the entire lowercase alphabet and all 10 digits. Finding the actual first character of the password is done by seeing which character takes the longest to be rejected. This is because once the first character is done being hashed, it will successfully match the first character of the actual password and the authentication process will move on to the next character and hash that. This moving on requires us to have a full 32-character password sent, so we can use a character we know isn't in the password, like a space or hyphen, to fill it out.
+
+A fairly simple [Python script](./files/flag_scripts/ultrasecret.py "Python script to get the flag") will perform this timing attack for us, and then we'll find that the password is `10e004c2e186b4d280fad7f36e779ed4` and submitting it will get our flag of `35C3_timing_attacks_are_fun!_:)`
+
 ## Pwn
 
 ### 1996
