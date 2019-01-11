@@ -81,7 +81,7 @@ externals.addFunction(
     "assert_conversion",
     [{name: "str", type: compiler.StringType}], compiler.StringType,
     false,
-    (str: string) => str.length === +str + "".length || !/^[1-9]+(\.[1-9]+)?$/.test(str)
+    (str: string) => str.length === str + "".length || !/^[1-9]+(\.[1-9]+)?$/.test(str)
         ? "Convert to Pastafarianism" : flags.CONVERSION_ERROR
 )
 ```
@@ -90,7 +90,7 @@ Focusing on that last line, we can see how we get our flag. The format of the as
 
 Looking at the statement on the right, it looks to be a regex expression that we can evaluate. The exclamation mark in the front shows that we'll take the inverse of whatever the regex spits out, so we need to find a string that matches the regex in order to get a false value. The regex starts from the start of the string and looks for a single digit between 1 and 9, inclusive. Then it looks for a period and then another digit between 1 and 9, inclusive. So basically, if we have a number between 1 and 9 with a single decimal, we can match the regex and then get an overall value of false for this statement.
 
-Now we need to get the left part of the statement to be false. It takes the length of the string and checks to see if it's equal to the value of the string + 0. Going off of what we found in the regex, we can use a floating point number to test this. If we take the length of the string `1.1`, which is 3, we can clearly see that 3 does not equal 1.1 + 0, making this statement false.
+Now we need to get the left part of the statement to be false. It takes the length of the string and checks to see if it's equal to the string + 0. When you add a string plus an integer in Javascript, it will just append the integer to the string. So for example, `"1.1" + 0` would turn out to be `1.10`, and we can see that this is not exactly equal to `1.1`, so this statement will always be false. 
 
 Now that both sides of the OR statement are false, the entire thing is false and we'll get our flag. However, we'll need to actually print out our flag because the assertion doesn't actually print anything. Looking at the weeterpreter code further, we see that there are `alert()` functions that we can use.
 
